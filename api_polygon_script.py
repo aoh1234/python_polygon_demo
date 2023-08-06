@@ -1,13 +1,16 @@
 import json
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # API key
-API_KEY = 'PGY2hHN4ls4x_sN3uk0FhIluBcMsLuJT'
+API_KEY = os.environ.get('POLYGON_API_KEY') # Not best practice, Passwords shuold be kept safe.
 
 # Polygon API URL
-API_URL = f'https://api.polygon.io/v2/aggs/ticker/META/range/1/day/2023-01-01/2023-07-20?adjusted=true&sort=asc&apiKey={API_KEY}'
+API_URL = f'https://api.polygon.io/v2/aggs/ticker/META/range/1/day/2023-01-09/2023-01-09?adjusted=true&sort=asc&apiKey={API_KEY}'
 print('Printing API URL:...')
 print(API_URL)
 
@@ -23,16 +26,7 @@ json_data = json.loads(response.text)
 
 # Convert JSON into pandas dataframe
 df = pd.DataFrame(json_data['results'])
+print(df.head())
 
-# mean statistics
-print('Printing mean statistics...')
-print(df.describe())
-
-# visualize data using matplotlib
-plt.plot(df['c'], color='green')
-plt.plot(df['h'], color='black')
-plt.plot(df['l'], color='red')
-plt.title('Polygon.io Stock Price')
-plt.xlabel('Time')
-plt.ylabel('Price')
-plt.show()
+# save the dataframe to csv
+df.to_csv('polygon_data.csv')
