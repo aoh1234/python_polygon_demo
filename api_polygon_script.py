@@ -3,30 +3,65 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 import os
+import pymongo
 
 load_dotenv()
 
 # API key
-API_KEY = os.environ.get('POLYGON_API_KEY') # Not best practice, Passwords shuold be kept safe.
+API_KEY = os.environ.get('POLYGON_API_KEY') # This is best practice
+
+# Set up MongoDB connection user credentials
+MONGO_DB_USER = os.environ.get('MONGO_DB_USER')
+MONGO_DB_PASSWORD = os.environ.get('MONGO_DB_PASSWORD')
+MONGO_CONNECTION_STRING = f'mongodb+srv://{MONGO_DB_USER}:{MONGO_DB_PASSWORD}@pythonapidemo.bbuekoq.mongodb.net/'
+
+# Set up MongoDB connection
+client = pymongo.MongoClient(MONGO_CONNECTION_STRING, tls=True, tlsAllowInvalidCertificates=True)
+
+# Create a database
+db = client['pythonapidemo']
 
 # Polygon API URL
-API_URL = f'https://api.polygon.io/v2/aggs/ticker/META/range/1/day/2023-01-09/2023-01-09?adjusted=true&sort=asc&apiKey={API_KEY}'
-print('Printing API URL:...')
-print(API_URL)
+API_URL__META = f'https://api.polygon.io/v2/aggs/ticker/META/range/1/day/2023-01-09/2023-01-09?adjusted=true&sort=asc&apiKey={API_KEY}'
+API_URL__TESLA = f'https://api.polygon.io/v2/aggs/ticker/TSLA/range/1/day/2023-01-09/2023-01-09?adjusted=true&sort=asc&apiKey={API_KEY}'
+lookup_list = [API_URL__META, API_URL__TESLA]
 
-# Make API request
-response = requests.get(API_URL)
-# print('Printing response...')
-# print(response.text)
+print('Printing lookup list:...')
+print(lookup_list)
+# print('Printing API URL:...')
+# print(API_URL)
 
-# Convert to JSON object
-json_data = json.loads(response.text)
-# print('Printing JSON data...')
-# print(json_data)
+# Create a function in order to make API requests based on URL that we pass in.
+def make_request(url):
+    import pandas as pd
 
-# Convert JSON into pandas dataframe
-df = pd.DataFrame(json_data['results'])
-print(df.head())
+    try:
+        json_data = requests.get(url)
+        print('Printing response...')
+        print(json_data)
 
-# save the dataframe to csv
-df.to_csv('polygon_data.csv')
+        # Convert JSON into pandas dataframe
+        json_results = json_data.json()['results']
+        ticker = json_data.json()['ticker']
+        
+        return json_results, ticker
+    except:
+        print('An error occurred')
+        return {}
+
+# For every api url in the lookup list, make a request and print the response.
+for api_url in lookup_list:
+
+    json_results, ticker = make_request(api_url)
+    print('Printing ticker...')
+    print(ticker)
+
+    # Make collection with ticker name from response.
+    collection = db[ticker]
+    print(client)
+    print(collection)
+
+    # Insert a json data from results into the collection
+    print('Writing json results to MongoDB, please wait...')
+    collection.insert_many(json_results)
+
